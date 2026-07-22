@@ -1,4 +1,5 @@
 import base64
+import mimetypes
 import re
 import time
 from collections import deque
@@ -14,7 +15,7 @@ from openai import OpenAI
 
 from knowledge.processor.import_processor.base import BaseNode, setup_logging, T
 from knowledge.processor.import_processor.state import ImportGraphState
-from knowledge.processor.import_processor.exceptions import StateFieldError, FileProcessingError
+from knowledge.processor.import_processor.exceptions import StateFieldError, FileProcessingError, ImageProcessingError
 from knowledge.utils.client.ai_clients import AIClients
 from knowledge.utils.client.storage_clients import StorageClients
 
@@ -93,6 +94,23 @@ class _MdFileHandler:
 
         # 7、返回
         return md_content, md_path_obj, img_dir
+
+    def backup(self, md_path_obj: Path, new_md_content: str) -> str:
+        self.logger.info("【step_5】备份新文件")
+
+        new_file_path = md_path_obj.with_name(
+            f"{md_path_obj.stem}_new{md_path_obj.suffix}"
+        )
+        try:
+            with open(new_file_path, "w", encoding="utf-8") as f:
+                f.write(new_md_content)
+            self.logger.info(f"处理后的文件已备份至: {new_file_path}")
+        except IOError as e:
+            self.logger.error(f"写入新文件失败 {new_file_path}: {e}")
+            raise ImageProcessingError(
+                f"文件写入失败: {e}", node_name="md_img_node"
+            )
+        return str(new_file_path)
 
 
 class _ImageScanner:
@@ -482,15 +500,19 @@ class _ImageUploader:
             object_name = f"{object_dir_name}/{img_info.name}"
             try:
                 # 2.1、上次图片到minio
+                content_type = mimetypes.guess_type(img_info.path)[0] or "application/octet-stream"
                 minio_client.fput_object(
-                    minio_bucket_name,object_name,img_info.path
+                    minio_bucket_name,
+                    object_name,
+                    img_info.path,
+                    content_type=content_type,
                 )
                 # 2.2、自己拼装路径
                 # http:172.19.147.173:9000/桶名/对象名
                 self.logger.info(f"成功将图片{img_info.name}上传到MinIO中")
                 remote_urls[img_info.name] = f"{minio_url}/{minio_bucket_name}/{object_name}"
             except Exception as e:
-                self.logger.warn(f"上传图片{img_info.name}到MinIO中失败，用本地图片地址做兜底")
+                self.logger.error(f"上传图片{img_info.name}到MinIO中失败，用本地图片地址做兜底: {e}")
                 remote_urls[img_info.name] = img_info.path
 
         self.logger.info(f"获取到远程的{len(remote_urls)}图片地址")
@@ -507,7 +529,27 @@ class _ImageUploader:
         Returns:
             新md
         """
-        # TODO(利用正则)
+        # 利用正则寻找(捕获组：()一个捕获组：group(0) 将整个匹配到的内容放进去group(1):图片的摘要group(2):图片地址)
+        pattern = re.compile(r"!\[(.*?)\]\((.*?)\)")
+
+        def replacer(match:re.Match) -> str:
+            """
+
+            Args:
+                match:
+
+            Returns:
+                ![摘要](远程图片地址)
+            """
+
+            for img_name, img_summary in summaries.items():
+                origin_img_path = match.group(2)
+                img_name_in_md = Path(origin_img_path).name
+                if img_name == img_name_in_md:
+                    return f"![{img_summary}]({remote_urls[img_name]})"
+            return match.group(0)
+
+        return pattern.sub(replacer,md_content)
 
 
 class MarkdownToImgNode(BaseNode):
@@ -552,10 +594,17 @@ class MarkdownToImgNode(BaseNode):
                                                                         image_extensions)
 
         # 3、操作_vlm_summarizer
+        self.log_step("step3", "利用VLM提取摘要")
         summaries: Dict[str, str] = self._vlm_summarizer._summary_all(md_path_obj.stem,img_info_list,config.vl_model)
 
         # 4、操作_img_uploader
+        self.log_step("step4", "上传文件到MinIO,并且更新MD")
         new_md_content = self._img_uploader.upload_and_replace(md_path_obj.stem,md_content,img_info_list,summaries,config.get_minio_base_url(),config.minio_bucket)
+
+        # 5、备份调配
+        self._md_file_handler.backup(md_path_obj, new_md_content)
+
+        state["md_content"] = new_md_content
         return state
 
 if __name__ == "__main__":

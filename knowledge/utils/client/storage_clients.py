@@ -24,7 +24,7 @@ class StorageClients(BaseClientManager):
 
     @classmethod
     def get_minio_client(cls) -> Minio:
-        return cls._get_or_create("_minio_client", cls._minio_lock, cls._create_minio)
+        return cls._get_or_create("_minio_client", cls._minio_lock, cls._create_minio_client)
 
     @classmethod
     def _create_minio_client(cls) -> Minio:
