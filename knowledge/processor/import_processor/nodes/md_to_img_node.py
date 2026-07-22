@@ -7,13 +7,16 @@ from logging import Logger
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional, Deque
 
+from langgraph.pregel import remote
 from mcp.types import ImageContent
+from minio import Minio
 from openai import OpenAI
 
 from knowledge.processor.import_processor.base import BaseNode, setup_logging, T
 from knowledge.processor.import_processor.state import ImportGraphState
 from knowledge.processor.import_processor.exceptions import StateFieldError, FileProcessingError
 from knowledge.utils.client.ai_clients import AIClients
+from knowledge.utils.client.storage_clients import StorageClients
 
 
 @dataclass     # 未来直接实例化(不需要重新__init__方法 __repr__方法)
@@ -440,6 +443,73 @@ class _ImageUploader:
     def __init__(self, logger:Logger):
         self.logger = logger
 
+    def upload_and_replace(self, object_dir_name:str, md_content:str, img_info_list:List[_ImageInfo], summaries:Dict[str,str], minio_url:str, minio_bucket_name:str) -> str:
+        """
+        上传文件图片到minio并且更新md中的图片地址以及摘要
+        Args:
+            object_dir_name:  minio对象的目录
+            md_content:       md的内容
+            img_info_list:    图片信息
+            summaries:        图片摘要
+            minio_url:        minio地址
+            minio_bucket:     桶名
+
+        Returns:
+            更新后的md内容
+        """
+
+        # 1、上传
+        remote_urls = self.upload_all(object_dir_name, img_info_list,minio_url,minio_bucket_name)
+
+        # 2、更新
+        md_content = self._update_md(md_content, summaries, remote_urls)
+
+        return md_content
+
+    def upload_all(self, object_dir_name:str, img_info_list:List[_ImageInfo], minio_url:str, minio_bucket_name:str) -> Dict[str, str]:
+
+        remote_urls = {}
+        # 1、得到MinIO客户端
+        try:
+            minio_client = StorageClients.get_minio_client()
+        except Exception as e:
+            for img_info in img_info_list:
+                remote_urls[img_info.name] = img_info.path
+            return remote_urls
+
+        # 2、遍历上传每一个
+        for img_info in img_info_list:
+            object_name = f"{object_dir_name}/{img_info.name}"
+            try:
+                # 2.1、上次图片到minio
+                minio_client.fput_object(
+                    minio_bucket_name,object_name,img_info.path
+                )
+                # 2.2、自己拼装路径
+                # http:172.19.147.173:9000/桶名/对象名
+                self.logger.info(f"成功将图片{img_info.name}上传到MinIO中")
+                remote_urls[img_info.name] = f"{minio_url}/{minio_bucket_name}/{object_name}"
+            except Exception as e:
+                self.logger.warn(f"上传图片{img_info.name}到MinIO中失败，用本地图片地址做兜底")
+                remote_urls[img_info.name] = img_info.path
+
+        self.logger.info(f"获取到远程的{len(remote_urls)}图片地址")
+        return remote_urls
+
+    def _update_md(self, md_content:str, summaries:Dict[str,str], remote_urls:Dict[str,str]) -> str:
+        """
+        更新MD中的图片描述和远程图片地址
+        Args:
+            md_content:   md内容
+            summaries:    vlm生成的摘要
+            remote_urls:  minio生成的url
+
+        Returns:
+            新md
+        """
+        # TODO(利用正则)
+
+
 class MarkdownToImgNode(BaseNode):
     """
     主要职责：
@@ -485,6 +555,7 @@ class MarkdownToImgNode(BaseNode):
         summaries: Dict[str, str] = self._vlm_summarizer._summary_all(md_path_obj.stem,img_info_list,config.vl_model)
 
         # 4、操作_img_uploader
+        new_md_content = self._img_uploader.upload_and_replace(md_path_obj.stem,md_content,img_info_list,summaries,config.get_minio_base_url(),config.minio_bucket)
         return state
 
 if __name__ == "__main__":
