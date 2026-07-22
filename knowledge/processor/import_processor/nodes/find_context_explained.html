@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>_find_context 图解</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8;padding:40px 20px}
+.c{max-width:900px;margin:0 auto}
+.h{text-align:center;padding:40px;background:linear-gradient(135deg,#1e293b,#334155);border-radius:20px;border:1px solid #475569;margin-bottom:32px}
+.h h1{font-size:2.2em;background:linear-gradient(135deg,#38bdf8,#818cf8,#c084fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.h p{color:#94a3b8}
+.s{background:#1e293b;border-radius:16px;padding:28px;margin-bottom:24px;border:1px solid #334155}
+.s h2{font-size:1.4em;color:#38bdf8;margin-bottom:14px;border-bottom:2px solid #334155;padding-bottom:8px}
+.s h3{font-size:1.1em;color:#818cf8;margin:16px 0 8px}
+.s p{margin-bottom:10px;color:#cbd5e1}
+.s ul{margin:8px 0 12px 22px}
+.s li{margin-bottom:4px}
+.cb{background:#0f172a;border-radius:10px;padding:16px;margin:12px 0;overflow-x:auto;border:1px solid #334155;font-family:Consolas,monospace;font-size:.84em;white-space:pre;tab-size:4}
+.kw{color:#c084fc}.fn{color:#38bdf8}.st{color:#34d399}.cm{color:#64748b;font-style:italic}.nm{color:#fbbf24}
+.fc{background:#0f172a;border-radius:10px;padding:20px 14px;margin:12px 0;border:1px solid #334155;text-align:center;overflow-x:auto}
+.nd{display:inline-block;padding:8px 18px;border-radius:8px;font-size:.9em;margin:5px 2px;min-width:170px;font-family:Consolas,monospace}
+.ns{background:#065f46;border:2px solid #34d399;color:#a7f3d0}
+.ne{background:#7f1d1d;border:2px solid #f87171;color:#fecaca}
+.np{background:#1e3a5f;border:2px solid #38bdf8;color:#bae6fd}
+.nd2{background:#78350f;border:2px solid #fbbf24;color:#fde68a;border-radius:18px}
+.nc{background:#581c87;border:2px solid #c084fc;color:#e9d5ff}
+.ar{display:block;color:#475569;font-size:1.3em}
+.br{display:flex;justify-content:center;gap:30px;margin:4px 0}
+.bi{text-align:center}.bl{font-size:.76em;color:#94a3b8;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th{background:#334155;color:#38bdf8;padding:9px 12px;text-align:left;border:1px solid #475569}
+td{padding:8px 12px;border:1px solid #334155;color:#cbd5e1;font-size:.88em}
+tr:nth-child(even) td{background:#1e293b}
+.cd{background:#0f172a;border-radius:10px;padding:16px;margin:12px 0;border:1px solid #334155}
+.ct{color:#38bdf8;font-weight:600;margin-bottom:5px}
+.ex{background:#0f172a;border-left:4px solid #34d399;border-radius:8px;padding:12px 16px;margin:12px 0}
+.et{color:#34d399;font-weight:600;margin-bottom:5px}
+.tg{display:inline-block;padding:2px 8px;border-radius:5px;font-size:.76em;font-weight:600}
+.tb{background:#1e3a5f;color:#38bdf8;border:1px solid #38bdf8}
+.tp{background:#581c87;color:#c084fc;border:1px solid #c084fc}
+.to{background:#78350f;color:#fbbf24;border:1px solid #fbbf24}
+.mv{background:#0f172a;border-radius:10px;padding:20px;margin:12px 0;border:1px solid #334155;font-family:Consolas,monospace;font-size:.84em;line-height:2;white-space:pre}
+.mh{color:#fbbf24;font-weight:bold}.mi{color:#f472b6}.mt{color:#cbd5e1}.mb{color:#475569}
+.mln{color:#475569;display:inline-block;width:28px;text-align:right;margin-right:12px}
+.mhi{background:#581c87;border-radius:3px;padding:1px 3px}.mhh{background:#78350f;border-radius:3px;padding:1px 3px}
+.dv{height:1px;background:linear-gradient(90deg,transparent,#475569,transparent);margin:24px 0}
+</style>
+</head>
+<body>
+<div class="c">
+<div class="h"><h1>_find_context 方法图解</h1><p>Markdown 图片上下文提取算法</p></div>
+<!-- 1. 总览 -->
+<div class="s">
+<h2>1. 方法总览</h2>
+<div class="cd"><div class="ct">一句话总结</div>
+<p>在 Markdown 中找到指定图片所在行，向上找标题和上文，向下找下文，封装成 _ImageContext 返回。</p></div>
+<h3>参数</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>含义</th></tr>
+<tr><td>img_name</td><td><span class="tg tb">str</span></td><td>图片文件名</td></tr>
+<tr><td>md_content</td><td><span class="tg tb">str</span></td><td>Markdown 完整内容</td></tr>
+<tr><td>img_content_length</td><td><span class="tg tb">int</span></td><td>上下文最大字符数</td></tr>
+<tr><td><b>返回</b></td><td><span class="tg tp">Optional</span></td><td>_ImageContext 或 None</td></tr>
+</table>
+<h3>调用链</h3>
+<div class="cb"><span class="cm"># scan_imgs_dir 对每张图片调用：</span>
+ctx = self._find_context(img_name, md_content, img_content_length)
+    ├── <span class="fn">_find_heading_up</span>()          <span class="cm"># 向上找最近标题</span>
+    ├── <span class="fn">_extract_limited_context</span>()  <span class="cm"># 截取上文</span>
+    ├── <span class="fn">_find_heading_down</span>()        <span class="cm"># 向下找下一个标题</span>
+    └── <span class="fn">_extract_limited_context</span>()  <span class="cm"># 截取下文</span></div>
+</div>
+
+<!-- 2. 主流程图 -->
+<div class="s">
+<h2>2. _find_context 主流程图</h2>
+<div class="fc">
+<div class="nd ns">开始</div><span class="ar">↓</span>
+<div class="nd np">构造正则表达式<br>匹配包含 img_name 的图片</div><span class="ar">↓</span>
+<div class="nd np">按 \n 切分 Markdown</div><span class="ar">↓</span>
+<div class="nd np">遍历每一行</div><span class="ar">↓</span>
+<div class="nd nd2">当前行匹配<br>目标图片吗？</div>
+<div class="br">
+<div class="bi"><div class="bl">否</div><div class="nd np">continue 跳过</div></div>
+<div class="bi"><div class="bl">是</div><div class="nd np">记录 md_idx</div></div>
+</div><span class="ar">↓</span>
+<div class="nd nc">_find_heading_up()<br>向上找最近标题</div><span class="ar">↓</span>
+<div class="nd np">截取上文行 pre_lines</div><span class="ar">↓</span>
+<div class="nd nc">_extract_limited_context()<br>段落化截取上文</div><span class="ar">↓</span>
+<div class="nd nc">_find_heading_down()<br>向下找下一个标题</div><span class="ar">↓</span>
+<div class="nd np">截取下文行 next_lines</div><span class="ar">↓</span>
+<div class="nd nc">_extract_limited_context()<br>段落化截取下文</div><span class="ar">↓</span>
+<div class="nd np">封装 _ImageContext</div><span class="ar">↓</span>
+<div class="nd ne">返回 _ImageContext</div>
+<br><div class="bl">都没找到 ↓</div>
+<div class="nd ne">返回 None</div>
+</div>
+</div>
+
+<!-- 3. 完整示例 -->
+<div class="s">
+<h2>3. 完整示例演示</h2>
+<p>查找 image001.jpg 的上下文：</p>
+<div class="mv"><span class="mln">0</span><span class="mh mhh">## 万用表外观</span>
+<span class="mln">1</span><span class="mb"></span>
+<span class="mln">2</span><span class="mt">万用表是一种常见的电子测量工具。</span>
+<span class="mln">3</span><span class="mt">它可以测量电压、电流和电阻。</span>
+<span class="mln">4</span><span class="mb"></span>
+<span class="mln">5</span><span class="mi mhi">![图片](images/image001.jpg)</span>
+<span class="mln">6</span><span class="mb"></span>
+<span class="mln">7</span><span class="mt">这是一台数字万用表。</span>
+<span class="mln">8</span><span class="mt">正面有液晶显示屏和功能旋钮。</span>
+<span class="mln">9</span><span class="mb"></span>
+<span class="mln">10</span><span class="mh">## 测量方法</span></div>
+<div class="cd"><div class="ct">执行过程</div>
+<ul>
+<li>正则匹配：第5行 → md_idx=5</li>
+<li>_find_heading_up：向上找到第0行 → head="## 万用表外观", prev_index=0</li>
+<li>截取上文：md_lines[1:5] → 第1~4行</li>
+<li>_extract_limited_context：分段 → 1个段落 → 未超限 → 保留</li>
+<li>_find_heading_down：向下找到第10行 → next_index=10</li>
+<li>截取下文：md_lines[6:10] → 第6~9行</li>
+<li>_extract_limited_context：分段 → 1个段落 → 未超限 → 保留</li>
+</ul></div>
+<div class="cd"><div class="ct">最终结果</div>
+<div class="cb">_ImageContext(
+    head=<span class="st">"## 万用表外观"</span>,
+    pre_text=<span class="st">"万用表是一种常见的电子测量工具。\n它可以测量电压、电流和电阻。"</span>,
+    post_text=<span class="st">"这是一台数字万用表。\n正面有液晶显示屏和功能旋钮。"</span>
+)</div></div>
+</div>
+<div class="dv"></div>
+
+<!-- 4. _find_heading_up -->
+<div class="s">
+<h2>4. _find_heading_up — 向上找最近标题</h2>
+<div class="cb"><span class="kw">def</span> _find_heading_up(self, md_lines, from_idx) -> Tuple[<span class="kw">str</span>, <span class="kw">int</span>]:
+    <span class="kw">for</span> i <span class="kw">in</span> range(from_idx - <span class="nm">1</span>, -<span class="nm">1</span>, -<span class="nm">1</span>):
+        <span class="kw">if</span> re.match(r<span class="st">"^#{1,6}\s+"</span>, md_lines[i]):
+            <span class="kw">return</span> md_lines[i], i
+    <span class="kw">return</span> <span class="st">""</span>, -<span class="nm">1</span></div>
+<p>从图片行的上一行开始，向上逐行检查是否是标题（以 # 开头）。找到返回标题内容和行号，找不到返回 ("", -1)。</p>
+<div class="fc">
+<div class="nd ns">开始</div><span class="ar">↓</span>
+<div class="nd np">从 from_idx-1 向上遍历</div><span class="ar">↓</span>
+<div class="nd nd2">是标题吗？<br>^#{1,6}\s+</div>
+<div class="br">
+<div class="bi"><div class="bl">是</div><div class="nd np">返回(标题,行号)</div></div>
+<div class="bi"><div class="bl">否</div><div class="nd np">继续向上</div></div>
+</div><span class="ar">↓</span>
+<div class="nd ne">返回("", -1)</div>
+</div>
+<div class="ex"><div class="et">示例</div>
+<p>图片在第5行 → 从第4行向上 → 第0行 ## 万用表外观 匹配 → 返回 ("## 万用表外观", 0)</p></div>
+</div>
+
+<!-- 5. _find_heading_down -->
+<div class="s">
+<h2>5. _find_heading_down — 向下找下一个标题</h2>
+<div class="cb"><span class="kw">def</span> _find_heading_down(self, md_lines, from_idx) -> <span class="kw">int</span>:
+    <span class="kw">for</span> i <span class="kw">in</span> range(from_idx + <span class="nm">1</span>, len(md_lines)):
+        <span class="kw">if</span> re.match(r<span class="st">"^#{1,6}\s+"</span>, md_lines[i]):
+            <span class="kw">return</span> i
+    <span class="kw">return</span> len(md_lines)</div>
+<p>从图片行的下一行开始，向下逐行检查是否是标题。找到返回行号，找不到返回文档末尾索引。</p>
+<div class="fc">
+<div class="nd ns">开始</div><span class="ar">↓</span>
+<div class="nd np">从 from_idx+1 向下遍历</div><span class="ar">↓</span>
+<div class="nd nd2">是标题吗？</div>
+<div class="br">
+<div class="bi"><div class="bl">是</div><div class="nd np">返回行号 i</div></div>
+<div class="bi"><div class="bl">否</div><div class="nd np">继续向下</div></div>
+</div><span class="ar">↓</span>
+<div class="nd ne">返回 len(md_lines)</div>
+</div>
+<div class="ex"><div class="et">示例</div>
+<p>图片在第5行 → 从第6行向下 → 第10行 ## 测量方法 匹配 → 返回 10</p></div>
+</div>
+<div class="dv"></div>
+
+<!-- 6. _extract_limited_context -->
+<div class="s">
+<h2>6. _extract_limited_context — 段落化截取</h2>
+<p>不按字符暴力截取，而是<strong>先按段落分组，再按段落选择保留哪些</strong>。</p>
+<h3>段落划分规则</h3>
+<div class="cd">
+<ul>
+<li><span class="tg to">规则1</span> <b>空行</b> — 自然段落分隔符</li>
+<li><span class="tg to">规则2</span> <b>其他图片行</b> — ![...](...) 也是分隔符（其他图片不要）</li>
+</ul></div>
+<h3>流程图</h3>
+<div class="fc">
+<div class="nd ns">开始</div><span class="ar">↓</span>
+<div class="nd np">遍历 extracted_md_lines</div><span class="ar">↓</span>
+<div class="nd nd2">是空行或<br>其他图片行？</div>
+<div class="br">
+<div class="bi"><div class="bl">是</div><div class="nd np">当前段落存入列表<br>开始新段落</div></div>
+<div class="bi"><div class="bl">否</div><div class="nd np">加入当前段落</div></div>
+</div><span class="ar">↓</span>
+<div class="nd np">direction="front" ?<br>反转列表（就近原则）</div><span class="ar">↓</span>
+<div class="nd np">遍历段落，累加长度<br>超过限制就停止</div><span class="ar">↓</span>
+<div class="nd np">direction="front" ?<br>反转回原始顺序</div><span class="ar">↓</span>
+<div class="nd ne">返回拼接结果</div>
+</div>
+<h3>为什么要反转两次？（上文 direction="front"）</h3>
+<div class="cd">
+<ul>
+<li><b>第一次反转</b>：上文行是"远→近"，反转后变"近→远"，先遇到离图片最近的段落</li>
+<li><b>累加判断</b>：从最近段落开始累加，超限就停 → 保留离图片最近的内容</li>
+<li><b>第二次反转</b>：恢复原文档顺序，方便 VLM 阅读</li>
+</ul></div>
+<h3>段落划分示例</h3>
+<div class="ex"><div class="et">输入</div>
+<div class="cb">[
+    <span class="st">""</span>,                                    <span class="cm"># 空行→分隔</span>
+    <span class="st">"万用表是一种常见的电子测量工具。"</span>,      <span class="cm"># 段落1</span>
+    <span class="st">"它可以测量电压、电流和电阻。"</span>,          <span class="cm"># 段落1</span>
+    <span class="st">""</span>,                                    <span class="cm"># 空行→分隔</span>
+    <span class="st">"![其他](images/other.jpg)"</span>,            <span class="cm"># 其他图片→分隔</span>
+    <span class="st">""</span>,                                    <span class="cm"># 空行→分隔</span>
+    <span class="st">"这段文字离图片更远。"</span>,                  <span class="cm"># 段落2</span>
+]</div></div>
+<div class="cd"><div class="ct">划分结果</div>
+<div class="cb">paragraphs = [
+    <span class="st">"万用表是一种常见的电子测量工具。\n它可以测量电压、电流和电阻。"</span>,
+    <span class="st">"这段文字离图片更远。"</span>,
+]</div></div>
+<div class="cd"><div class="ct">长度限制选择（假设 max=30）</div>
+<ul>
+<li>段落1 长度=28 → total=28 ≤ 30 → 保留</li>
+<li>段落2 长度=10 → total=38 > 30 → 停止</li>
+</ul></div>
+</div>
+
+<div class="dv"></div>
+
+<!-- 7. 总结 -->
+<div class="s">
+<h2>7. 总结</h2>
+<table>
+<tr><th>方法</th><th>职责</th><th>输入</th><th>输出</th></tr>
+<tr><td>_find_context</td><td>主方法：找到图片并提取上下文</td><td>图片名, MD全文, 长度限制</td><td>_ImageContext 或 None</td></tr>
+<tr><td>_find_heading_up</td><td>向上找最近标题</td><td>MD行列表, 图片行号</td><td>(标题内容, 标题行号)</td></tr>
+<tr><td>_find_heading_down</td><td>向下找下一个标题</td><td>MD行列表, 图片行号</td><td>标题行号</td></tr>
+<tr><td>_extract_limited_context</td><td>段落化截取并限制长度</td><td>行列表, 长度限制, 方向</td><td>截取后的字符串</td></tr>
+</table>
+<div class="cd"><div class="ct">核心设计思想</div>
+<ul>
+<li><b>标题作为边界</b>：上文从最近标题开始，下文到下一个标题结束，不跨章节</li>
+<li><b>段落化截取</b>：不暴力按字符截断，保留完整段落语义</li>
+<li><b>就近原则</b>：超限时优先保留离图片最近的段落</li>
+<li><b>其他图片排除</b>：上下文中不包含其他图片引用，避免干扰 VLM</li>
+</ul></div>
+</div>
+</div>
+</body>
+</html>
