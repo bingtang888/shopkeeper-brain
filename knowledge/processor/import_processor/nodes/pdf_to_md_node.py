@@ -5,8 +5,8 @@ import json
 from typing import Tuple
 from pathlib import Path
 
-os.environ.setdefault("MINERU_DEVICE_MODE", "cpu")
-os.environ.setdefault("MINERU_MODEL_SOURCE", "local")
+os.environ["MINERU_DEVICE_MODE"] = "cpu"
+os.environ["MINERU_MODEL_SOURCE"] = "local"
 
 from mineru.cli.common import do_parse
 
@@ -32,7 +32,10 @@ class PdfToMdNode(BaseNode):
         # 2、执行mineru解析（命令：mineru -p input_path -o output_dir --source=local）
         processed_code = self._execute_mineru_parse(import_file_path_obj, file_dir_obj)
         if processed_code != 0:
-            raise PdfConversionError(message="MinerU解析PDF失败",node_name=self.name)
+            raise PdfConversionError(
+                message="MinerU解析PDF失败，请查看 MinerU 详细日志",
+                node_name=self.name
+            )
 
         # 3、获取解析后md_path
         md_path = self.get_md_path(import_file_path_obj,file_dir_obj)
@@ -126,7 +129,9 @@ class PdfToMdNode(BaseNode):
             return 0
         except Exception as e:
             end_time = time.time()
-            self.logger.info(f"MinerU解析PDF失败 耗时:{end_time - start_time:.2f}s 错误:{e}")
+            self.logger.exception(
+                f"MinerU解析PDF失败 耗时:{end_time - start_time:.2f}s 错误:{e}"
+            )
             return 1
 
     def get_md_path(self, import_file_path_obj:Path, file_dir_obj:Path) -> str:
