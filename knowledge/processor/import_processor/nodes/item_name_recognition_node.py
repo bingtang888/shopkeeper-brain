@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -140,7 +141,7 @@ class ItemNameRecognitionNode(BaseNode):
             ])
 
             # 4、获取AI回复的具体内容
-            llm_result = llm_response.content.strip('')
+            llm_result = llm_response.content.strip()
             if not llm_result or llm_result == "UNKNOWN":
                 self.logger.error(f"LLM提取商品名失败, 降级使用文件标题{file_title}作为商品名兜底")
                 return file_title
@@ -317,7 +318,11 @@ if __name__ == '__main__':
     setup_logging()
 
     # 1. 读取chunk.json
-    chunk_json_path = r"D:\forAI\project\shopkeeper_brain\knowledge\processor\import_processor\temp_dir\chunks.json"
+    temp_dir = Path(r"D:\forAI\project\shopkeeper_brain\knowledge\processor\import_processor\temp_dir")
+
+    chunk_json_path = temp_dir / "chunks.json"
+    output_path = temp_dir / "chunks_item_name.json"
+
     with open(chunk_json_path, "r", encoding="utf-8") as f:
         chunk_content = json.load(f)
 
@@ -337,6 +342,11 @@ if __name__ == '__main__':
     print(f"商品名: {result.get('item_name')}")
     print(f"chunks数量: {len(result.get('chunks', []))}")
     print(f"首个chunk是否含item_name: {'item_name' in result['chunks'][0]}")
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=4)
+
+    print(f"Item_name:{result.get('item_name')}生成完成，结果已保存至：\n{output_path}")
 
 
 

@@ -6,6 +6,7 @@ from typing import Optional
 from langchain_openai import ChatOpenAI
 
 from openai import OpenAI
+import httpx
 from dotenv import load_dotenv
 from pymilvus.model.hybrid import BGEM3EmbeddingFunction
 
@@ -38,7 +39,15 @@ class AIClients(BaseClientManager):
             api_key = cls._require_env("OPENAI_API_KEY")
             base_url = cls._require_env("OPENAI_API_BASE")
 
-            client = OpenAI(api_key=api_key, base_url=base_url)
+            http_client = httpx.Client(
+                trust_env=False,
+                timeout=httpx.Timeout(60.0, connect=15.0)
+            )
+            client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                http_client=http_client
+            )
             logger.info(f"OpenAI 客户端初始化成功 (base_url={base_url})")
             return client
 
@@ -66,12 +75,19 @@ class AIClients(BaseClientManager):
             if response_format:
                 model_kwargs["response_format"] = {"type": "json_object"}
 
+            http_client = httpx.Client(
+                trust_env=False,
+                timeout=httpx.Timeout(60.0, connect=15.0)
+            )
             llm_client = ChatOpenAI(
                 model=model_name,
                 temperature=0,
                 api_key=api_key,
                 base_url=base_url,
-                model_kwargs=model_kwargs
+                model_kwargs=model_kwargs,
+                http_client=http_client,
+                timeout=60.0,
+                max_retries=0
             )
             logger.info(f"OpenAI LLM 客户端初始化成功")
             return llm_client
