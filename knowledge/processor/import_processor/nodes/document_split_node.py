@@ -181,7 +181,7 @@ class DocumentSplitNode(BaseNode):
             current_sections.extend(self._split_long_section(section, max_content_length))
 
         # 2、合并
-        final_sections = self._merger_short_section(current_sections, min_content_length, max_content_length)
+        final_sections = self._merger_short_section(current_sections, min_content_length)
         return final_sections
 
     def _split_long_section(self, section:Dict[str,Any], max_content_length:int) ->List[Dict[str,Any]]:
@@ -255,64 +255,45 @@ class DocumentSplitNode(BaseNode):
         # 7.返回
         return sub_sections
 
-    def _merger_short_section(self, current_sections: List[Dict[str, Any]], min_content_length: int, max_content_length: int) -> List[Dict[str, Any]]:
+    def _merger_short_section(self, current_sections, min_content_length) -> List[Dict[str, Any]]:
         """
         合并短的章节：
         短章节来源：
-        来源1：原本根据一级标题切分之后内容就很短
-        来源2：(LangChain递归切分器)二次切分之后可能有很短的内容
+        来源1：原本根据一级标题切分之后可能内容就很短
+        来源2：（LangChain递归切分器）二次切分之后可能有很短的内容
         合并策略：
         条件1：section很短比最小阈值还小
-        条件2：同源(父标题相同)
+        条件2：同源（父标题相同）
         Args:
             current_sections: 二次切分后的所有section对象
-            min_content_length: 每一个section的内容最小的长度
+            min_content_length:每一个section的内容最小长度
 
         Returns:
             合并之后的section对象
 
             贪心累加算法
-        """
 
-        # 1. 初始化
-        if not current_sections:
-            return []
+        """
 
         current_section = current_sections[0]
         final_sections = []
 
         # 2. 遍历合并
         for next_section in current_sections[1:]:
-            same_parent = (
-                current_section.get('parent_title', '')
-                == next_section.get('parent_title', '')
-            )
-            current_body = current_section.get('body') or ''
-            next_body = next_section.get('body') or ''
-
-            merged_body = current_body.rstrip() + "\n\n" + next_body.lstrip()
-            merged_title = current_section.get('title') or ''
-            next_title = next_section.get('title') or ''
-            candidate_title = merged_title
-            if merged_title and next_title and next_title not in merged_title:
-                candidate_title = f"{merged_title}、{next_title}"
-
-            merged_content_length = len(f"{candidate_title}\n\n{merged_body}")
-            merged_too_long = merged_content_length > max_content_length
-
-            if same_parent and len(current_body) < min_content_length and not merged_too_long:
+            same_parent = (current_section['parent_title'] == next_section['parent_title'])
+            if same_parent and len(current_section.get('body')) < min_content_length:
                 # 合并 body
-                current_section['body'] = merged_body
-                # 标题保留原始标题，用逗号拼接被合并的标题
-                current_section['title'] = candidate_title
+                current_section['body'] = (
+                        current_section.get('body').rstrip() + "\n\n" + next_section.get('body').lstrip()
+                )
+                # 标题回退为父标题
+                current_section['title'] = current_section['parent_title']
             else:
                 # 封箱
                 final_sections.append(current_section)
-                current_section = next_section
-
+                current_section = next_section  # 更新指针
         # 最后一个封箱
         final_sections.append(current_section)
-
         return final_sections
 
     def _assemble_chunks(self, final_sections:List[Dict[str,Any]]) -> List[Dict[str,Any]]:
@@ -390,7 +371,8 @@ if __name__ == "__main__":
 
     init_state = {
         "md_content": md_content,
-        "file_title": "万用表的使用"
+        "file_title": "万用表的使用",
+        "file_dir": r"D:\forAI\project\shopkeeper_brain\knowledge\processor\import_processor\temp_dir"
     }
     result = document_split_node.process(init_state)
     sections = result.get("chunks", [])

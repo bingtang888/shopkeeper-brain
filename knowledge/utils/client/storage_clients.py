@@ -1,6 +1,7 @@
+import os
 import threading
+from pathlib import Path
 from typing import Optional
-from typing import TypeVar, Optional
 import logging
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ from pymilvus import MilvusClient
 from dotenv import load_dotenv
 from knowledge.utils.client.base import BaseClientManager
 
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
 
 class StorageClients(BaseClientManager):
@@ -18,6 +19,9 @@ class StorageClients(BaseClientManager):
 
     _minio_client: Optional[Minio] = None
     _minio_lock = threading.Lock()
+
+    _milvus_client: Optional[MilvusClient] = None
+    _milvus_lock = threading.Lock()
 
 
     # ── MinIO ──
@@ -50,3 +54,26 @@ class StorageClients(BaseClientManager):
         except Exception as e:
             logger.error(f"MinIO 客户端创建失败: {e}")
             raise ConnectionError(f"MinIO 连接失败: {e}") from e
+
+    # ── Milvus ──
+
+    @classmethod
+    def get_milvus_client(cls) -> MilvusClient:
+        return cls._get_or_create("_milvus_client", cls._milvus_lock, cls._create_milvus_client)
+
+    @classmethod
+    def _create_milvus_client(cls) -> Minio:
+        try:
+
+            milvus_uri = cls._require_env("MILVUS_URL")
+            milvus_client = MilvusClient(uri=milvus_uri)
+            return milvus_client
+        except EnvironmentError:
+            raise
+        except Exception as e:
+            logger.error(f"Milvus 客户端创建失败: {e}")
+            raise ConnectionError(f"Milvus 连接失败: {e}") from e
+
+if __name__ == '__main__':
+    storage_client = StorageClients()
+    print(storage_client.get_milvus_client())
