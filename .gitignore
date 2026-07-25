@@ -15,4 +15,5 @@ __pycache__/
 .vscode/
 **/.vscode/
 knowledge/processor/import_processor/temp_dir/
+day06/
 .git-knowledge-backup/
