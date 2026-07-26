@@ -8,6 +8,8 @@ from knowledge.processor.import_processor.nodes.pdf_to_md_node import PdfToMdNod
 from knowledge.processor.import_processor.nodes.md_to_img_node import MarkdownToImgNode
 from knowledge.processor.import_processor.nodes.document_split_node import DocumentSplitNode
 from knowledge.processor.import_processor.nodes.item_name_recognition_node import ItemNameRecognitionNode
+from knowledge.processor.import_processor.nodes.embedding_chunks_node import EmbeddingChunksNode
+from knowledge.processor.import_processor.nodes.import_milvus import ImportMilvusNode
 from knowledge.processor.import_processor.state import ImportGraphState
 
 """
@@ -59,7 +61,9 @@ def import_graph() -> CompiledStateGraph:
         "pdf_to_md_node": PdfToMdNode(),
         "md_to_img_node": MarkdownToImgNode(),
         "document_split_node": DocumentSplitNode(),
-        "item_name_recognition_node": ItemNameRecognitionNode()
+        "item_name_recognition_node": ItemNameRecognitionNode(),
+        "embedding_chunk_node": EmbeddingChunksNode(),
+        "import_milvus_node": ImportMilvusNode()
     }
 
     # 4、遍历映射表添加
@@ -78,7 +82,9 @@ def import_graph() -> CompiledStateGraph:
     work_flow.add_edge("pdf_to_md_node","md_to_img_node")
     work_flow.add_edge("md_to_img_node", "document_split_node")
     work_flow.add_edge("document_split_node", "item_name_recognition_node")
-    work_flow.add_edge("item_name_recognition_node", END)
+    work_flow.add_edge("item_name_recognition_node", "embedding_chunk_node")
+    work_flow.add_edge("embedding_chunk_node", "import_milvus_node")
+    work_flow.add_edge("import_milvus_node", END)
 
     ## 5.3 编译
     compiled_state_graph = work_flow.compile()
@@ -104,9 +110,20 @@ def run_import_graph() :
     # stream:迭代整个graph图状态可以得到每一个节点的事件(节点的名字以及节点的操作完state之后的新状态)
     final_state = {}
     for event in import_app.stream(graph_state):
-        for node_name,state in event.items():
-            print(f"当前正在执行的节点：{node_name}")
-            print(f"当前正在执行的节点状态：{state}")
+        for node_name, state in event.items():
+            chunks = state.get("chunks", [])
+            vectorized_count = sum(
+                1 for chunk in chunks
+                if chunk.get("dense_vector") and chunk.get("sparse_vector")
+            )
+            milvus_id_count = sum(1 for chunk in chunks if chunk.get("chunk_id"))
+            print(
+                f"节点完成：{node_name}；"
+                f"chunks数量：{len(chunks)}；"
+                f"商品名：{state.get('item_name', '')}；"
+                f"已向量化：{vectorized_count}；"
+                f"已获取Milvus主键：{milvus_id_count}"
+            )
             final_state = state
     return final_state
 

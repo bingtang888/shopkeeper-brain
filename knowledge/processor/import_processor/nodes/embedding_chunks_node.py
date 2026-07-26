@@ -136,17 +136,17 @@ if __name__ == '__main__':
     base_dir = Path(
         r"D:\forAI\project\shopkeeper_brain\knowledge\processor\import_processor\temp_dir"
     )
-    input_path = base_dir / "chunks.json"
+    input_path = base_dir / "chunks_item_name.json"
     output_path = base_dir / "chunks_vector.json"
 
     if not input_path.exists():
         raise FileNotFoundError(f"找不到输入文件: {input_path}")
 
     with open(input_path, "r", encoding="utf-8") as f:
-        chunks_data = json.load(f)
+        state = json.load(f)
 
     node = EmbeddingChunksNode()
-    result_state = node.process({"chunks": chunks_data})
+    result_state = node.process(state)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result_state, f, ensure_ascii=False, indent=4)
