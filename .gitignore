@@ -17,3 +17,4 @@ __pycache__/
 knowledge/processor/import_processor/temp_dir/
 day06/
 .git-knowledge-backup/
+knowledge/temp_data/
