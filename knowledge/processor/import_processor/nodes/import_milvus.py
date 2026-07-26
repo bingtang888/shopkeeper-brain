@@ -24,7 +24,6 @@ _SCALAR_FIELDS: Sequence[_SCALAR_FIELD_SPC] = (
     _SCALAR_FIELD_SPC(field_name="parent_title", datatype=DataType.VARCHAR, max_length=65535),
     _SCALAR_FIELD_SPC(field_name="file_title", datatype=DataType.VARCHAR, max_length=65535),
     _SCALAR_FIELD_SPC(field_name="item_name", datatype=DataType.VARCHAR, max_length=65535),
-    _SCALAR_FIELD_SPC(field_name="number", datatype=DataType.VARCHAR, max_length=65535),
 )
 
 class _MilvusIndexBuilder:
