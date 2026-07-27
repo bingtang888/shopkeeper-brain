@@ -1,0 +1,6 @@
+寮€濮嬪鐞?..
+WARNING:langchain_openai.chat_models._client_utils:langchain-openai injected a custom httpx transport to apply `http_socket_options`, which disables httpx's proxy auto-detection (system proxy configuration detected). Set `LANGCHAIN_OPENAI_TCP_KEEPALIVE=0` or pass `http_socket_options=()` to restore default proxy behavior, or supply `openai_proxy` / your own `http_client` / `http_async_client` to take full control.
+INFO:knowledge.utils.client.base:OpenAI LLM 客户端初始化成功
+INFO:httpx:HTTP Request: POST https://ws-j02f4521uufhh8z5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:FlagEmbedding.finetune.embedder.encoder_only.m3.runner:loading existing colbert_linear and sparse_linear---------
+You're using a XLMRobertaTokenizerFast tokenizer. Please note that with a fast tokenizer, using the `__call__` method is faster than using a method to encode the text followed by a call to the `pad` method to get a padded encoding.
