@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     mock_state = {
         "rewritten_query": "RS-12 数字万用表如何测量直流电压？",
-        "item_names": ["RS-12 数字万用表"],
+        "item_names": ["RS PRO RS-12 型数字万用表"]
     }
 
     node = HyDeVectorSearchNode()
