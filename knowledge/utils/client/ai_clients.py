@@ -10,6 +10,8 @@ import httpx
 from dotenv import load_dotenv
 from pymilvus.model.hybrid import BGEM3EmbeddingFunction
 
+from FlagEmbedding import FlagReranker
+
 from knowledge.utils.client.base import BaseClientManager, logger
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
@@ -26,6 +28,9 @@ class AIClients(BaseClientManager):
 
     _bge_m3_client: Optional[BGEM3EmbeddingFunction] = None
     _bge_m3_lock = threading.Lock()
+
+    _bge_m3_rerank_client: Optional[FlagReranker] = None
+    _bge_m3_rerank_lock = threading.Lock()
 
     # ── VLM ──
 
@@ -125,6 +130,34 @@ class AIClients(BaseClientManager):
 
         except Exception as e:
             raise ConnectionError(f"BGE_M3嵌入模型客户端创建失败：{e}") from e
+
+    # ── BGE-M3 Reranker ──
+
+    @classmethod
+    def get_bge_m3_rerank_client(cls) -> FlagReranker:
+        return cls._get_or_create("_bge_m3_rerank_client", cls._bge_m3_rerank_lock, cls._create_bge_m3_rerank_client)
+
+    @classmethod
+    def _create_bge_m3_rerank_client(cls) -> FlagReranker:
+        """
+        创建 BGE-Reranker-Large 客户端
+        """
+        try:
+            model_name = cls._require_env("BGE_RERANKER_LARGE")
+            device = os.getenv("BGE_RERANKER_DEVICE", "cpu")
+            use_fp16 = os.getenv("BGE_RERANKER_FP16", "0") == "1"
+
+            reranker = FlagReranker(
+                model_name_or_path=model_name,
+                device=device,
+                use_fp16=use_fp16
+            )
+            logger.info(f"BGE-Reranker 客户端初始化成功 (device={device}, fp16={use_fp16})")
+            return reranker
+        except EnvironmentError:
+            raise
+        except Exception as e:
+            raise ConnectionError(f"BGE-Reranker 客户端创建失败：{e}") from e
 
 
 if __name__ == '__main__':
