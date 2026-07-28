@@ -1,0 +1,97 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1785227150753,
+  "projectRoot": "d:\\forAI\\project\\shopkeeper_brain",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "day06": {
+      "path": "day06",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1785227150724,
+      "keyFiles": []
+    },
+    "day08": {
+      "path": "day08",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1785227150725,
+      "keyFiles": []
+    },
+    "day10": {
+      "path": "day10",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1785227150725,
+      "keyFiles": []
+    },
+    "day11": {
+      "path": "day11",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1785227150725,
+      "keyFiles": []
+    },
+    "knowledge": {
+      "path": "knowledge",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1785227150726,
+      "keyFiles": [
+        "main.py",
+        "requirements.txt",
+        "run_mineru_direct.py",
+        "test_torch.py"
+      ]
+    },
+    "knowledge\\api": {
+      "path": "knowledge\\api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1785227150727,
+      "keyFiles": [
+        "import_router.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "",
+      "accessCount": 7,
+      "lastAccessed": 1785228965122,
+      "type": "directory"
+    },
+    {
+      "path": "day11\\2_resource\\15_掌柜智库项目（查询处理）RRF融合节点.md",
+      "accessCount": 1,
+      "lastAccessed": 1785228908267,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
