@@ -7,7 +7,13 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from dotenv import load_dotenv
 from knowledge.processor.query_processor.state import QueryGraphState
-
+from knowledge.processor.query_processor.nodes.item_name_confirmed_node import ItemNameConfirmedNode
+from knowledge.processor.query_processor.nodes.hybrid_vector_search_node import HybridVectorSearch
+from knowledge.processor.query_processor.nodes.hyde_vector_search_node import HyDeVectorSearchNode
+from knowledge.processor.query_processor.nodes.web_mcp_search_node import WebMcpSearchNode
+from knowledge.processor.query_processor.nodes.rrf_merge_node import RrfMergeNode
+from knowledge.processor.query_processor.nodes.reranker_node import RerankerNode
+from knowledge.processor.query_processor.nodes.answer_output_node import AnswerOutPutNode
 
 # 加载环境变量
 load_dotenv()

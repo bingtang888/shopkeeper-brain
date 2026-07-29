@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 from collections import defaultdict
 
 
@@ -12,7 +12,7 @@ _tasks_done_list: Dict[str, List[str]] = defaultdict(list)
 _tasks_duration: Dict[str, Dict[str, float]] = defaultdict(dict)
 
 # 只要访问不存在的 key，自动帮你初始化为 {} 查询时候用
-# _tasks_result: Dict[str, Dict[str, str]] = defaultdict(dict)
+_tasks_result: Dict[str, Dict[str, str]] = defaultdict(dict)
 
 _tasks_status: Dict[str, str] = {}
 
@@ -85,20 +85,20 @@ def update_task_status(task_id: str, status_name: str) -> None:
     # 1. 更新指定任务的总体运行状态（如 processing 等）
     _tasks_status[task_id] = status_name
 
-#
-# def set_task_result(task_id: str, key: str, value: str) -> None:
-#     """
-#     存储任务结果字段（如 answer / error）。
-#     """
-#     _tasks_result[task_id][key] = value
+
+def set_task_result(task_id: str, key: str, value: str) -> None:
+    """
+    存储任务结果字段（如 answer / error）。
+    """
+    _tasks_result[task_id][key] = value
 
 
-# def get_task_result(task_id: str, key: str, default: str = "") -> str:
-#     """
-#     获取任务结果字段（如 answer / error）。
-#     """
-#     return _tasks_result.get(task_id, {}).get(key, default)
-#
+def get_task_result(task_id: str, key: str, default: str = "") -> str:
+    """
+    获取任务结果字段（如 answer / error）。
+    """
+    return _tasks_result.get(task_id, {}).get(key, default)
+
 
 
 def add_node_duration(task_id: str, node_name: str, duration: float) -> None:
@@ -110,7 +110,7 @@ def get_node_durations(task_id: str) -> Dict[str, float]:
     """获取所有节点的耗时"""
     return dict(_tasks_duration.get(task_id, {}))
 
-def get_task_info(task_id: str) -> Dict[str, any]:
+def get_task_info(task_id: str) -> Dict[str, Any]:
     """
     获取任务的全局信息（状态 + 运行中节点 + 已完成节点）
     :param task_id: 任务ID
