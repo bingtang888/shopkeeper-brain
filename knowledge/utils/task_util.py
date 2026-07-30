@@ -29,6 +29,18 @@ _NODE_NAME_TO_CN: Dict[str, str] = {
     "item_name_recognition_node": "主体名称识别",
     "embedding_chunk_node": "向量生成",
     "import_milvus_node": "导入向量数据库",
+
+    # 查询流程节点
+    "item_name_confirmed_node": "商品名确认",
+    "multi_search": "多路搜索分发",
+    "hybrid_vector_search_node": "向量检索",
+    "hyde_vector_search_node": "HyDE检索",
+    "web_mcp_search_node": "网络搜索",
+    "join": "多路搜索汇合",
+    "rrf_merge_node": "RRF融合",
+    "reranker_node": "重排序",
+    "answer_output_node": "答案生成",
+
     "__end__": "处理完成",
 
 }
